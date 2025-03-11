@@ -1,5 +1,6 @@
 "use client";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Button } from "~/components/ui/button";
@@ -22,14 +23,35 @@ export default function RegisterForm() {
   const form = useForm({
     resolver: zodResolver<RegisterSchemaType>(registerSchema),
   });
+  const router = useRouter();
   const onSubmit = async (data: z.infer<typeof registerSchema>) => {
-    await fetch(`${envConfig.NEXT_PUBLIC_API_ENDPOINT}auth/register`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(data),
-    });
+    try {
+      const res = await fetch(
+        `${envConfig.NEXT_PUBLIC_API_ENDPOINT}auth/register`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(data),
+        }
+      );
+      const result = await res.json();
+      if (!res.ok) {
+        throw result;
+      }
+      const resultFromNextServer = await fetch("/api/auth", {
+        method: "POST",
+        body: JSON.stringify(result),
+      });
+      const resultJson = await resultFromNextServer.json();
+      if (!resultJson.token) {
+        throw new Error("Token not found");
+      }
+      router.push("/me");
+    } catch (error) {
+      console.log(error);
+    }
   };
 
   return (
