@@ -31,3 +31,19 @@ export type LoginSchemaType = Pick<AuthSchemaType, "email" | "password">;
 export const loginSchema = authSchema
   .pick({ email: true, password: true })
   .strict();
+
+export const registerRes = z.object({
+  data: z.object({
+    token: z.string(),
+    account: z.object({
+      id: z.number(),
+      name: z.string(),
+      email: z.string(),
+    }),
+  }),
+  message: z.string(),
+});
+export type RegisterResponseType = z.infer<typeof registerRes>;
+
+export const loginRes = registerRes;
+export type LoginResponseType = z.infer<typeof loginRes>;

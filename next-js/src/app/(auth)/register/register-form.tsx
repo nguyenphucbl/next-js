@@ -1,8 +1,11 @@
 "use client";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 import { z } from "zod";
+import authApiRequest from "~/apiRequest/auth";
 import { Button } from "~/components/ui/button";
 import {
   Form,
@@ -13,7 +16,7 @@ import {
   FormMessage,
 } from "~/components/ui/form";
 import { Input } from "~/components/ui/input";
-import envConfig from "~/config";
+import { handleErrorApi } from "~/lib/utils";
 import {
   registerSchema,
   RegisterSchemaType,
@@ -23,34 +26,27 @@ export default function RegisterForm() {
   const form = useForm({
     resolver: zodResolver<RegisterSchemaType>(registerSchema),
   });
+  const [loading, setLoading] = useState<boolean>(false);
   const router = useRouter();
   const onSubmit = async (data: z.infer<typeof registerSchema>) => {
+    setLoading(true);
     try {
-      const res = await fetch(
-        `${envConfig.NEXT_PUBLIC_API_ENDPOINT}auth/register`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(data),
-        }
-      );
-      const result = await res.json();
-      if (!res.ok) {
-        throw result;
-      }
-      const resultFromNextServer = await fetch("/api/auth", {
-        method: "POST",
-        body: JSON.stringify(result),
+      const res = await authApiRequest.register(data);
+      toast.success("Register successful", {
+        position: "top-right",
       });
-      const resultJson = await resultFromNextServer.json();
-      if (!resultJson.token) {
-        throw new Error("Token not found");
-      }
+      await authApiRequest.auth({
+        sessionToken: res.payload.data.token,
+      });
       router.push("/me");
     } catch (error) {
-      console.log(error);
+      handleErrorApi({
+        error,
+        setError: form.setError,
+        duration: 2000,
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -116,8 +112,8 @@ export default function RegisterForm() {
             </FormItem>
           )}
         />
-        <Button type="submit" className="mt-12 w-full">
-          Submit
+        <Button type="submit" className="mt-12 w-full" disabled={loading}>
+          {loading ? "Loading..." : "Register"}
         </Button>
       </form>
     </Form>
