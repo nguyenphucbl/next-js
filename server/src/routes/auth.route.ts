@@ -1,11 +1,20 @@
 import envConfig from '@/config'
-import { loginController, logoutController, registerController } from '@/controllers/auth.controller'
+import {
+  loginController,
+  logoutController,
+  slideSessionController,
+  registerController
+} from '@/controllers/auth.controller'
 import { requireLoginedHook } from '@/hooks/auth.hooks'
 import {
   LoginBody,
   LoginBodyType,
   LoginRes,
   LoginResType,
+  SlideSessionBody,
+  SlideSessionBodyType,
+  SlideSessionRes,
+  SlideSessionResType,
   RegisterBody,
   RegisterBodyType,
   RegisterRes,
@@ -45,6 +54,7 @@ export default async function authRoutes(fastify: FastifyInstance, options: Fast
             message: 'Đăng ký thành công',
             data: {
               token: session.token,
+              expiresAt: session.expiresAt.toISOString(),
               account
             }
           })
@@ -53,6 +63,7 @@ export default async function authRoutes(fastify: FastifyInstance, options: Fast
           message: 'Đăng ký thành công',
           data: {
             token: session.token,
+            expiresAt: session.expiresAt.toISOString(),
             account
           }
         })
@@ -70,7 +81,9 @@ export default async function authRoutes(fastify: FastifyInstance, options: Fast
       preValidation: fastify.auth([requireLoginedHook])
     },
     async (request, reply) => {
-      const { sessionToken } = request.cookies
+      const sessionToken = envConfig.COOKIE_MODE
+        ? request.cookies.sessionToken
+        : request.headers.authorization?.split(' ')[1]
       const message = await logoutController(sessionToken as string)
       if (envConfig.COOKIE_MODE) {
         reply
@@ -117,6 +130,7 @@ export default async function authRoutes(fastify: FastifyInstance, options: Fast
             message: 'Đăng nhập thành công',
             data: {
               token: session.token,
+              expiresAt: session.expiresAt.toISOString(),
               account
             }
           })
@@ -125,7 +139,55 @@ export default async function authRoutes(fastify: FastifyInstance, options: Fast
           message: 'Đăng nhập thành công',
           data: {
             token: session.token,
+            expiresAt: session.expiresAt.toISOString(),
             account
+          }
+        })
+      }
+    }
+  )
+
+  fastify.post<{ Reply: SlideSessionResType; Body: SlideSessionBodyType }>(
+    '/slide-session',
+    {
+      schema: {
+        response: {
+          200: SlideSessionRes
+        },
+        body: SlideSessionBody
+      },
+      preValidation: fastify.auth([requireLoginedHook])
+    },
+    async (request, reply) => {
+      const sessionToken = envConfig.COOKIE_MODE
+        ? request.cookies.sessionToken
+        : request.headers.authorization?.split(' ')[1]
+      const session = await slideSessionController(sessionToken as string)
+      if (envConfig.COOKIE_MODE) {
+        reply
+          .setCookie('sessionToken', session.token, {
+            path: '/',
+            httpOnly: true,
+            secure: true,
+            expires: session.expiresAt,
+            sameSite: 'none',
+            domain: envConfig.DOMAIN
+          })
+          .send({
+            message: 'Refresh session thành công',
+            data: {
+              token: session.token,
+              account: request.account!,
+              expiresAt: session.expiresAt.toISOString()
+            }
+          })
+      } else {
+        reply.send({
+          message: 'Refresh session thành công',
+          data: {
+            token: session.token,
+            expiresAt: session.expiresAt.toISOString(),
+            account: request.account!
           }
         })
       }

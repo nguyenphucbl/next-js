@@ -4,7 +4,7 @@ import { twMerge } from "tailwind-merge";
 import { EntityError } from "./http";
 import { UseFormSetError } from "react-hook-form";
 import { toast } from "sonner";
-
+import jwt from "jsonwebtoken";
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
@@ -27,9 +27,17 @@ export const handleErrorApi = ({
     });
   } else {
     toast.error("Error:", {
-      description: error.message,
+      description: error.message || "Something went wrong",
       duration: duration || 2000,
       position: "top-right",
     });
   }
+};
+
+export const normalizePath = (path: string) => {
+  return path.replace(/\/+/g, "/").replace(/\/$/, "");
+};
+
+export const decodeJWT = <Payload = any>(token: string) => {
+  return jwt.decode(token) as Payload;
 };

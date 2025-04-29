@@ -52,6 +52,22 @@ export const logoutController = async (sessionToken: string) => {
   return 'Đăng xuất thành công'
 }
 
+/**
+ * Tăng thời gian hết hạn của session token lên
+ * @param sessionToken
+ */
+export const slideSessionController = async (sessionToken: string) => {
+  const expiresAt = addMilliseconds(new Date(), ms(envConfig.SESSION_TOKEN_EXPIRES_IN))
+  const session = await prisma.session.update({
+    where: {
+      token: sessionToken
+    },
+    data: {
+      expiresAt
+    }
+  })
+  return session
+}
 export const loginController = async (body: LoginBodyType) => {
   const account = await prisma.account.findUnique({
     where: {

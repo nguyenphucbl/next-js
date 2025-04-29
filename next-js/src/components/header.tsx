@@ -1,3 +1,4 @@
+import ButtonLogout from "./button-logout";
 import { ModeToggle } from "./toggle-theme";
 import Link from "next/link";
 
@@ -11,6 +12,9 @@ export default function Header() {
           </li>
           <li className="font-semibold text-lg hover:text-blue-500 p-1 cursor-pointer dark:hover:bg-slate-200 rounded-sm">
             <Link href={"/register"}>Register</Link>
+          </li>
+          <li className="font-semibold text-lg hover:text-blue-500 p-1 cursor-pointer dark:hover:bg-slate-200 rounded-sm">
+            <ButtonLogout />
           </li>
         </ul>
         <ModeToggle />

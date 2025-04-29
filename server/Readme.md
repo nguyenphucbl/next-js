@@ -8,6 +8,10 @@
 - Media: Upload hình ảnh
 - Test API
 
+> Lưu ý quan trọng: thỉnh thoảng nên pull code mới từ github repo của mình về, vì đôi khi mình có cập nhật logic API trong quá trình mình quay video
+
+> Trong file `server/.env` có thuộc tính `COOKIE_MODE`, hãy set `true` nếu bạn muốn dùng cookie cho việc authentication ở server
+
 ## Công nghệ sử dụng
 
 Node.js + Fastify + Sqlite
@@ -136,7 +140,11 @@ Khi register, login thành công thì server sẽ tự động set cookie cho do
 }
 ```
 
-- `POST /auth/logout`: Đăng xuất với body là `null`, yêu cầu xác thực
+- `POST /auth/slide-session`: Tăng thời gian hết hạn của session token. Body là `{}`
+
+Yêu cầu cần phải gửi lên `sessionToken` (qua cookie hay Authorization header là tùy mode của bạn)
+
+- `POST /auth/logout`: Đăng xuất với body là `{}`, yêu cầu xác thực
 
 Khi logout thì server của mình sẽ tự động remove cookie `sessionToken` đi
 

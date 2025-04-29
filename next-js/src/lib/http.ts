@@ -1,11 +1,15 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import envConfig from "~/config";
 import { LoginResponseType } from "~/schema-validation/auth-schema";
+import { normalizePath } from "./utils";
+import { redirect } from "next/navigation";
 
 type CustomOptions = Omit<RequestInit, "body"> & {
   body?: unknown;
   baseUrl?: string;
 };
 const ENTITY_ERROR_STATUS = 422;
+const AUTHENTICATION_STATUS = 401;
 type EntityErrorPayload = {
   message: string;
   errors: {
@@ -53,7 +57,11 @@ class SessionToken {
     this.token = token;
   }
 }
+
 export const clientSessionToken = new SessionToken();
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let clientLogoutRequest: null | Promise<any> = null;
+
 const request = async <Response>(
   method: "GET" | "POST" | "PUT" | "DELETE",
   url: string,
@@ -90,13 +98,62 @@ const request = async <Response>(
         }
       );
     }
+    if (response.status === AUTHENTICATION_STATUS) {
+      // Handle authentication error client-side
+      if (typeof window !== "undefined") {
+        try {
+          if (!clientLogoutRequest) {
+            clientLogoutRequest = fetch("/api/auth/logout", {
+              method: "POST",
+              body: JSON.stringify({ force: true }),
+              headers: {
+                ...headers,
+              },
+            }).finally(() => {
+              clientLogoutRequest = null;
+            });
+          }
+          await clientLogoutRequest;
+          clientSessionToken.value = "";
+          location.href = "/login";
+          return {
+            status: response.status,
+            payload: {} as Response,
+          };
+        } catch (error) {
+          window.location.href = "/login";
+          return {
+            status: response.status,
+            payload: {} as Response,
+          };
+        }
+      }
+    }
+    // Handle authentication error server-side
+    if (typeof window === "undefined") {
+      const sessionToken = (options?.headers as any)?.Authorization.split(
+        " "
+      )[1];
+      if (sessionToken) {
+        redirect(`/logout?sessionToken=${sessionToken}`);
+      } else {
+        redirect("/login");
+      }
+    }
+
     throw new HttpError(data);
   }
-  if (["auth/login", "auth/register"].includes(url)) {
-    clientSessionToken.value = (payload as LoginResponseType).data.token;
-  }
-  if ("auth/logout".includes(url)) {
-    clientSessionToken.value = "";
+  if (typeof window !== "undefined") {
+    if (
+      ["auth/login", "auth/register"].some(
+        (item) => normalizePath(url) === item
+      )
+    ) {
+      clientSessionToken.value = (payload as LoginResponseType).data.token;
+    }
+    if ("auth/logout" === normalizePath(url)) {
+      clientSessionToken.value = "";
+    }
   }
   return data;
 };
